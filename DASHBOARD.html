@@ -1,0 +1,400 @@
+<!DOCTYPE html>  
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Dark Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    body {
+      display: flex;
+      min-height: 100vh;
+      background-color: #1e1e2f;
+      color: white;
+      overflow-x: hidden; /* ✅ fix: يمنع السكروول الأفقي على المقاسات الضيقة */
+    }
+
+    .sidebar {
+      background-color: #111827;
+      width: 220px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .sidebar h2 {
+      color: #0ea5e9;
+      margin-bottom: 20px;
+    }
+
+    .sidebar p {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      border-radius: 6px;
+      transition: background 0.3s;
+      cursor: pointer;
+    }
+
+    .sidebar p:hover {
+      background-color: #374151;
+    }
+
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0; /* ✅ fix: يسمح للكونتنت إنه يكمش داخل الـ flex ويظبط على كل الأحجام */
+    }
+
+    .navbar {
+      background-color: #111827;
+      padding: 20px;
+      font-size: 24px;
+      font-weight: bold;
+      color: #0ea5e9;
+    }
+
+    .content-section {
+      display: none;
+    }
+
+    .content-section.active {
+      display: block;
+    }
+
+    .cards, .charts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      padding: 20px;
+    }
+
+    .card {
+      flex: 1 1 calc(25% - 20px);
+      padding: 20px;
+      border-radius: 12px;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .blue { background-color: #2563eb; }
+    .orange { background-color: #f97316; }
+    .green { background-color: #22c55e; }
+    .red { background-color: #ef4444; }
+
+    .chart-container {
+      background-color: #111827;
+      padding: 20px;
+      border-radius: 12px;
+      flex: 1 1 45%;
+    }
+
+    canvas {
+      background: transparent;
+      max-width: 100%;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      display: block;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    table, th, td {
+      border: 1px solid #374151;
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #374151;
+    }
+
+    /* ✅ Responsive */
+    @media (max-width: 1024px) {
+      .card {
+        flex: 1 1 calc(50% - 20px);
+      }
+    }
+
+    @media (max-width: 768px) {
+      body {
+        flex-direction: column;
+      }
+
+      .sidebar {
+        width: 100%;
+        flex-direction: row;
+        overflow-x: auto;
+      }
+
+      .charts {
+        flex-direction: column;
+      }
+
+      .card {
+        flex: 1 1 100%;
+      }
+
+      .chart-container {
+        flex: 1 1 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <h2>STORE</h2>
+    <p onclick="showSection('dashboard')"><i class="fas fa-chart-pie"></i> Dashboard</p>
+    <p onclick="showSection('products')"><i class="fas fa-box"></i> Products</p>
+    <p onclick="showSection('categories')"><i class="fas fa-th-large"></i> Categories</p>
+    <p onclick="showSection('customers')"><i class="fas fa-users"></i> Customers</p>
+    <p onclick="showSection('inventory')"><i class="fas fa-warehouse"></i> Inventory</p>
+    <p onclick="showSection('reports')"><i class="fas fa-file-alt"></i> Reports</p>
+    <p onclick="showSection('settings')"><i class="fas fa-cog"></i> Settings</p>
+  </div>
+
+  <div class="main">
+    <div class="navbar">DASHBOARD</div>
+
+    <div id="dashboard" class="content-section active">
+      <div class="cards">
+        <div class="card blue">
+          <h3>PRODUCTS</h3>
+          <p>249</p>
+          <i class="fas fa-box"></i>
+        </div>
+        <div class="card orange">
+          <h3>CATEGORIES</h3>
+          <p>25</p>
+          <i class="fas fa-th"></i>
+        </div>
+        <div class="card green">
+          <h3>CUSTOMERS</h3>
+          <p>1500</p>
+          <i class="fas fa-users"></i>
+        </div>
+        <div class="card red">
+          <h3>ALERTS</h3>
+          <p>56</p>
+          <i class="fas fa-bell"></i>
+        </div>
+      </div>
+      <div class="charts">
+        <div class="chart-container">
+          <h3>Top 5 Products</h3>
+          <canvas id="barChart"></canvas>
+        </div>
+        <div class="chart-container">
+          <h3>Purchase and Sales Orders</h3>
+          <canvas id="lineChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Products Section -->
+    <div id="products" class="content-section">
+      <h2>Product List</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Product Name</th>
+            <th>Category</th>
+            <th>Stock</th>
+            <th>Price</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Laptop</td>
+            <td>Electronics</td>
+            <td>100</td>
+            <td>$1000</td>
+          </tr>
+          <tr>
+            <td>Phone</td>
+            <td>Electronics</td>
+            <td>200</td>
+            <td>$800</td>
+          </tr>
+          <tr>
+            <td>Monitor</td>
+            <td>Electronics</td>
+            <td>150</td>
+            <td>$300</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Categories Section -->
+    <div id="categories" class="content-section">
+      <h2>Categories</h2>
+      <ul>
+        <li>Electronics</li>
+        <li>Home Appliances</li>
+        <li>Furniture</li>
+        <li>Clothing</li>
+        <li>Books</li>
+      </ul>
+    </div>
+
+    <!-- Customers Section -->
+    <div id="customers" class="content-section">
+      <h2>Customer Overview</h2>
+      <p>1500 customers registered</p>
+      <div class="chart-container">
+        <h3>Purchase and Sales Orders</h3>
+        <canvas id="lineChart2"></canvas>
+      </div>
+    </div>
+
+    <!-- Inventory Section -->
+    <div id="inventory" class="content-section">
+      <h2>Inventory Overview</h2>
+      <p>Total Items in Stock: 3000</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Product Name</th>
+            <th>Available Stock</th>
+            <th>Price</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Laptop</td>
+            <td>100</td>
+            <td>$1000</td>
+          </tr>
+          <tr>
+            <td>Phone</td>
+            <td>200</td>
+            <td>$800</td>
+          </tr>
+          <tr>
+            <td>Monitor</td>
+            <td>150</td>
+            <td>$300</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Reports Section -->
+    <div id="reports" class="content-section">
+      <h2>Reports</h2>
+      <p>Monthly Sales Report</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Month</th>
+            <th>Sales</th>
+            <th>Revenue</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>January</td>
+            <td>300</td>
+            <td>$25000</td>
+          </tr>
+          <tr>
+            <td>February</td>
+            <td>280</td>
+            <td>$24000</td>
+          </tr>
+          <tr>
+            <td>March</td>
+            <td>320</td>
+            <td>$28000</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Settings Section -->
+    <div id="settings" class="content-section">
+      <h2>Settings</h2>
+      <p>Change Password, Update Email, etc.</p>
+      <form>
+        <label for="username">Username</label><br>
+        <input type="text" id="username" value="admin" disabled><br><br>
+        <label for="password">New Password</label><br>
+        <input type="password" id="password" placeholder="Enter new password"><br><br>
+        <button type="submit">Save Changes</button>
+      </form>
+    </div>
+
+  </div>
+
+  <script>
+    function showSection(id) {
+      document.querySelectorAll('.content-section').forEach(sec => sec.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
+
+    const barCtx = document.getElementById('barChart').getContext('2d');
+    new Chart(barCtx, {
+      type: 'bar',
+      data: {
+        labels: ['Laptop', 'Phone', 'Monitor', 'Headphones', 'Camera'],
+        datasets: [{
+          label: 'Count',
+          data: [9, 8, 6, 4, 2],
+          backgroundColor: ['#3b82f6', '#ef4444', '#22c55e', '#f97316', '#8b5cf6']
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true } }
+      }
+    });
+
+    const lineCtx = document.getElementById('lineChart').getContext('2d');
+    new Chart(lineCtx, {
+      type: 'line',
+      data: {
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],
+        datasets: [
+          { label: 'Purchase Orders', data: [20, 40, 30, 35, 60, 95, 85], borderColor: '#22c55e', fill: false },
+          { label: 'Sales Orders', data: [10, 60, 50, 45, 70, 100, 90], borderColor: '#ef4444', fill: false }
+        ]
+      },
+      options: { responsive: true, scales: { y: { beginAtZero: true } } }
+    });
+
+    const lineCtx2 = document.getElementById('lineChart2').getContext('2d');
+    new Chart(lineCtx2, {
+      type: 'line',
+      data: {
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],
+        datasets: [
+          { label: 'Purchase Orders', data: [15, 30, 25, 45, 55, 70, 65], borderColor: '#22c55e', fill: false },
+          { label: 'Sales Orders', data: [12, 50, 45, 40, 65, 80, 75], borderColor: '#ef4444', fill: false }
+        ]
+      },
+      options: { responsive: true, scales: { y: { beginAtZero: true } } }
+    });
+  </script>
+</body>
+</html>
